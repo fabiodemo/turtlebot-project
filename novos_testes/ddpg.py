@@ -21,39 +21,39 @@ from collections import deque
 dirPath = os.path.dirname(os.path.realpath(__file__)) 
 #---Functions to make network updates---# 
 def soft_update(target, source, tau): 
- for target_param, param in zip(target.parameters(), source.parameters()): 
- target_param.data.copy_(target_param.data*(1.0 - tau)+ param.data*tau) 
+    for target_param, param in zip(target.parameters(), source.parameters()): 
+        target_param.data.copy_(target_param.data*(1.0 - tau)+ param.data*tau) 
 def hard_update(target,source): 
- for target_param, param in zip(target.parameters(), source.parameters()): 
- target_param.data.copy_(param.data) 
+    for target_param, param in zip(target.parameters(), source.parameters()): 
+        target_param.data.copy_(param.data) 
 #---Ornstein-Uhlenbeck Noise for action---# 
 class ActionNoise: 
- # Based on http://math.stackexchange.com/questions/1287634/implementing-ornstein-uhlenbeck-in-matlab  def __init__(self, action_dim, mu=0, theta=0.15, sigma=0.2): 
- self.action_dim = action_dim 
- self.mu = mu 
- self.theta = theta 
- self.sigma = sigma 
- self.X = np.ones(self.action_dim)*self.mu 
+# Based on http://math.stackexchange.com/questions/1287634/implementing-ornstein-uhlenbeck-in-matlab  def __init__(self, action_dim, mu=0, theta=0.15, sigma=0.2): 
+    self.action_dim = action_dim 
+    self.mu = mu 
+    self.theta = theta 
+    self.sigma = sigma 
+    self.X = np.ones(self.action_dim)*self.mu 
   
- def reset(self): 
- self.X = np.ones(self.action_dim)*self.mu 
+    def reset(self): 
+        self.X = np.ones(self.action_dim)*self.mu 
   
- def sample(self): 
- dx = self.theta*(self.mu - self.X) 
- dx = dx + self.sigma*np.random.randn(len(self.X)) 
- self.X = self.X + dx 
- print('aqu2i' + str(self.X)) 
- return self.X 
-#---Critic--# 
+    def sample(self): 
+        dx = self.theta*(self.mu - self.X) 
+        dx = dx + self.sigma*np.random.randn(len(self.X)) 
+        self.X = self.X + dx 
+        print('aqu2i' + str(self.X)) 
+        return self.X 
+        #---Critic--# 
 EPS = 0.003
-37 
+
 def fanin_init(size, fanin=None): 
- fanin = fanin or size[0] 
- v = 1./np.sqrt(fanin) 
- return torch.Tensor(size).uniform_(-v,v) 
+    fanin = fanin or size[0] 
+    v = 1./np.sqrt(fanin) 
+    return torch.Tensor(size).uniform_(-v,v) 
 class Critic(nn.Module): 
- def __init__(self, state_dim, action_dim): 
- super(Critic, self).__init__() 
+    def __init__(self, state_dim, action_dim): 
+        super(Critic, self).__init__() 
   
  self.state_dim = state_dim = state_dim 
  self.action_dim = action_dim 
