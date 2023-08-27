@@ -100,10 +100,10 @@ class Actor(nn.Module):
 		x = torch.relu(self.fa2(x))
 		action = self.fa3(x)
 		if state.shape == torch.Size([14]):
-		action[0] = torch.sigmoid(action[0])*self.action_limit_v
-		action[1] = torch.tanh(action[1])*self.action_limit_w
+			action[0] = torch.sigmoid(action[0])*self.action_limit_v
+			action[1] = torch.tanh(action[1])*self.action_limit_w
 		else:
-		action[:,0] = torch.sigmoid(action[:,0])*self.action_limit_v
+			action[:,0] = torch.sigmoid(action[:,0])*self.action_limit_v
 
 		action[:,1] = torch.tanh(action[:,1])*self.action_limit_w
 		return action
@@ -140,31 +140,30 @@ BATCH_SIZE = 128
 LEARNING_RATE = 0.001
 GAMMA = 0.99
 TAU = 0.001
+
 class Trainer:
-
 	def __init__(self, state_dim, action_dim, action_limit_v, action_limit_w, ram):
+		self.state_dim = state_dim
+		self.action_dim = action_dim
+		self.action_limit_v = action_limit_v
+		self.action_limit_w = action_limit_w
+		#print('w',self.action_limit_w)
+		self.ram = ram
+		#self.iter = 0
+		self.noise = ActionNoise(self.action_dim)
 
-	self.state_dim = state_dim
-	self.action_dim = action_dim
-	self.action_limit_v = action_limit_v
-	self.action_limit_w = action_limit_w
-	#print('w',self.action_limit_w)
-	self.ram = ram
-	#self.iter = 0
-	self.noise = ActionNoise(self.action_dim)
+		self.actor = Actor(self.state_dim, self.action_dim, self.action_limit_v, self.action_limit_w)
+		self.target_actor = Actor(self.state_dim, self.action_dim, self.action_limit_v, self.action_limit_w)
+		self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), LEARNING_RATE)
+		self.critic = Critic(self.state_dim, self.action_dim)
+		self.target_critic = Critic(self.state_dim, self.action_dim)
+		self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), LEARNING_RATE)
 
-	self.actor = Actor(self.state_dim, self.action_dim, self.action_limit_v, self.action_limit_w)
-	self.target_actor = Actor(self.state_dim, self.action_dim, self.action_limit_v, self.action_limit_w)
-	self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), LEARNING_RATE)
-	self.critic = Critic(self.state_dim, self.action_dim)
-	self.target_critic = Critic(self.state_dim, self.action_dim)
-	self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), LEARNING_RATE)
+		self.pub_qvalue = rospy.Publisher('qvalue', Float32, queue_size=5)
+		self.qvalue = Float32()
 
-	self.pub_qvalue = rospy.Publisher('qvalue', Float32, queue_size=5)
-	self.qvalue = Float32()
-
-	hard_update(self.target_actor, self.actor)
-	hard_update(self.target_critic, self.critic)
+		hard_update(self.target_actor, self.actor)
+		hard_update(self.target_critic, self.critic)
 
 	def get_exploitation_action(self,state):
 		state = torch.from_numpy(state)
