@@ -89,27 +89,26 @@ class Env():
 		#print('cur:', current_distance, self.past_distance)
 		distance_rate = (self.past_distance - current_distance)
 		if distance_rate > 0:
-		reward = 200.*distance_rate
+			reward = 200.*distance_rate
 		#if distance_rate == 0:
 		# reward = -6.
 		if distance_rate <= 0:
-		reward = -8.
+			reward = -8.
 		#angle_reward = math.pi - abs(heading)
 		#print('d', 500*distance_rate)
 		#reward = 200.*distance_rate #+ 3.*angle_reward
 		self.past_distance = current_distance
 		if done:
-
-		rospy.loginfo("Collision!!")
-		reward = -150.
-		self.pub_cmd_vel.publish(Twist())
+			rospy.loginfo("Collision!!")
+			reward = -150.
+			self.pub_cmd_vel.publish(Twist())
 		if self.get_goalbox:
-		rospy.loginfo("Goal!!")
-		reward = 500.
-		self.pub_cmd_vel.publish(Twist())
-		self.goal_x, self.goal_y = self.respawn_goal.getPosition(True, delete=True)
-		self.goal_distance = self.getGoalDistace()
-		self.get_goalbox = False
+			rospy.loginfo("Goal!!")
+			reward = 500.
+			self.pub_cmd_vel.publish(Twist())
+			self.goal_x, self.goal_y = self.respawn_goal.getPosition(True, delete=True)
+			self.goal_distance = self.getGoalDistace()
+			self.get_goalbox = False
 		return reward
 
 	def step(self, action, past_action):
@@ -121,31 +120,37 @@ class Env():
 		self.pub_cmd_vel.publish(vel_cmd)
 		data = None
 		while data is None:
-		try:
-		data = rospy.wait_for_message('scan', LaserScan, timeout=5)
-		except:
-		pass
+			try:
+				data = rospy.wait_for_message('scan', LaserScan, timeout=5)
+			except:
+				pass
+
 		state, done = self.getState(data, past_action)
 		reward = self.setReward(state, done)
+
 		return np.asarray(state), reward, done
 
 	def reset(self):
 		rospy.wait_for_service('gazebo/reset_simulation')
 		try:
-		self.reset_proxy()
+			self.reset_proxy()
 		except (rospy.ServiceException) as e:
-		print("gazebo/reset_simulation service call failed")
+			print("gazebo/reset_simulation service call failed")
+
 		data = None
 		while data is None:
-		try:
-		data = rospy.wait_for_message('scan', LaserScan, timeout=5)
-		except:
-		pass
+			try:
+				data = rospy.wait_for_message('scan', LaserScan, timeout=5)
+			except:
+				pass
+
 		if self.initGoal:
-		self.goal_x, self.goal_y = self.respawn_goal.getPosition()
-		self.initGoal = False
+			self.goal_x, self.goal_y = self.respawn_goal.getPosition()
+			self.initGoal = False
 		else:
-		self.goal_x, self.goal_y = self.respawn_goal.getPosition(True, delete=True)
+			self.goal_x, self.goal_y = self.respawn_goal.getPosition(True, delete=True)
+
 		self.goal_distance = self.getGoalDistace()
 		state, done = self.getState(data, [0.,0.])
+
 		return np.asarray(state)
