@@ -153,7 +153,9 @@ class Trainer:
 	#self.iter = 0
 	self.noise = ActionNoise(self.action_dim)
 
-	self.actor = Actor(self.state_dim, self.action_dim, self.action_limit_v, self.action_limit_w)	self.target_actor = Actor(self.state_dim, self.action_dim, self.action_limit_v, self.action_limit_w)  self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), LEARNING_RATE)
+	self.actor = Actor(self.state_dim, self.action_dim, self.action_limit_v, self.action_limit_w)
+	self.target_actor = Actor(self.state_dim, self.action_dim, self.action_limit_v, self.action_limit_w)
+	self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), LEARNING_RATE)
 	self.critic = Critic(self.state_dim, self.action_dim)
 	self.target_critic = Critic(self.state_dim, self.action_dim)
 	self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), LEARNING_RATE)
@@ -221,10 +223,14 @@ class Trainer:
 		soft_update(self.target_critic, self.critic, TAU)
 
 	def save_models(self, episode_count):
-		torch.save(self.target_actor.state_dict(), dirPath +'/Models/stage_1/'+str(episode_count)+ '_actor3.pt')  torch.save(self.target_critic.state_dict(), dirPath + '/Models/stage_1/'+str(episode_count)+ '_critic3.pt')	print('****Models saved***')
+		torch.save(self.target_actor.state_dict(), dirPath +'/Models/stage_1/'+str(episode_count)+ '_actor3.pt')
+		torch.save(self.target_critic.state_dict(), dirPath + '/Models/stage_1/'+str(episode_count)+ '_critic3.pt')
+		print('****Models saved***')
 
 	def load_models(self, episode):
-		self.actor.load_state_dict(torch.load(dirPath + '/Models/stage_1/'+str(episode)+ '_actor3.pt'))  self.critic.load_state_dict(torch.load(dirPath + '/Models/stage_1/'+str(episode)+ '_critic3.pt'))  hard_update(self.target_actor, self.actor)
+		self.actor.load_state_dict(torch.load(dirPath + '/Models/stage_1/'+str(episode)+ '_actor3.pt'))
+		self.critic.load_state_dict(torch.load(dirPath + '/Models/stage_1/'+str(episode)+ '_critic3.pt'))
+		hard_update(self.target_actor, self.actor)
 		hard_update(self.target_critic, self.critic)
 		print('***Models load***')
 
@@ -238,62 +244,72 @@ STATE_DIMENSION = 14
 ACTION_DIMENSION = 2
 ACTION_V_MAX = 0.22 # m/s
 ACTION_W_MAX = 1. # rad/s
+
 if is_training:
 	var_v = ACTION_V_MAX*0.30
 	var_w = ACTION_W_MAX*2*0.15
+
 else:
 	var_v = ACTION_V_MAX*0.10
 	var_w = ACTION_W_MAX*0.10
+
 print('State Dimensions: ' + str(STATE_DIMENSION))
 print('Action Dimensions: ' + str(ACTION_DIMENSION))
-print('Action Max: ' + str(ACTION_V_MAX) + ' m/s and ' + str(ACTION_W_MAX) + ' rad/s') ram = MemoryBuffer(MAX_BUFFER)
+print('Action Max: ' + str(ACTION_V_MAX) + ' m/s and ' + str(ACTION_W_MAX) + ' rad/s')
+ram = MemoryBuffer(MAX_BUFFER)
 trainer = Trainer(STATE_DIMENSION, ACTION_DIMENSION, ACTION_V_MAX, ACTION_W_MAX,  ram)
 trainer.load_models(300)
+
 if __name__ == '__main__':
 	rospy.init_node('ddpg_stage_1')
 	pub_result = rospy.Publisher('result', Float32, queue_size=5)
 	result = Float32()
 	env = Env()
+
 	start_time = time.time()
 	past_action = np.array([0.,0.])
-	for ep in range(MAX_EPISODES):
-	done = False
-	state = env.reset()
-	print('Episode: ' + str(ep))
-	rewards_current_episode = 0
-	for step in range(MAX_STEPS):
 
-	state = np.float32(state)
-	if is_training:
-	action = trainer.get_exploration_action(state)
-	action[0] = np.clip(np.random.normal(action[0], var_v), 0., ACTION_V_MAX)	action[1] = np.clip(np.random.normal(action[1], var_w), -ACTION_W_MAX, ACTION_W_MAX)
-	if not is_training:
-	action = trainer.get_exploitation_action(state)
-	next_state, reward, done = env.step(action, past_action)
-	print('action', action,'r',reward)
-	past_action = action
-	rewards_current_episode += reward
-	next_state = np.float32(next_state)
-	ram.add(state, action, reward, next_state)
-	state = next_state
-	if ram.len >= 2*MAX_STEPS and is_training:
-	var_v = max([var_v*0.99999, 0.30*ACTION_V_MAX])
-	var_w = max([var_w*0.99999, 0.30*ACTION_W_MAX])
-	trainer.optimizer()
-	#if is_training:
-	# trainer.optimizer()
-	if done or step == MAX_STEPS-1:
-	print('reward per ep: ' + str(rewards_current_episode))
-	print('explore_v: ' + str(var_v) + ' and explore_w: ' + str(var_w))
-	rewards_all_episodes.append(rewards_current_episode)
-	result = rewards_current_episode
-	pub_result.publish(result)
-	m, s = divmod(int(time.time() - start_time), 60)
-	h, m = divmod(m, 60)
-	break
-	exploration_rate = (min_exploration_rate +
-	(max_exploration_rate - min_exploration_rate)* np.exp(-exploration_decay_rate*ep))  gc.collect()
-	if ep%50 == 0:
-	trainer.save_models(ep)
+	for ep in range(MAX_EPISODES):
+		done = False
+		state = env.reset()
+		print('Episode: ' + str(ep))
+		rewards_current_episode = 0
+		for step in range(MAX_STEPS):
+
+			state = np.float32(state)
+			if is_training:
+				action = trainer.get_exploration_action(state)
+				action[0] = np.clip(np.random.normal(action[0], var_v), 0., ACTION_V_MAX)
+				action[1] = np.clip(np.random.normal(action[1], var_w), -ACTION_W_MAX, ACTION_W_MAX)
+			if not is_training:
+				action = trainer.get_exploitation_action(state)
+			next_state, reward, done = env.step(action, past_action)
+			print('action', action,'r',reward)
+			past_action = action
+
+			rewards_current_episode += reward
+			next_state = np.float32(next_state)
+			ram.add(state, action, reward, next_state)
+			state = next_state
+			if ram.len >= 2*MAX_STEPS and is_training:
+				r_v = max([var_v*0.99999, 0.30*ACTION_V_MAX])
+				var_w = max([var_w*0.99999, 0.30*ACTION_W_MAX])
+				trainer.optimizer()
+				#if is_training:
+				# trainer.optimizer()
+			if done or step == MAX_STEPS-1:
+				print('reward per ep: ' + str(rewards_current_episode))
+				print('explore_v: ' + str(var_v) + ' and explore_w: ' + str(var_w))
+				rewards_all_episodes.append(rewards_current_episode)
+				result = rewards_current_episode
+				pub_result.publish(result)
+				m, s = divmod(int(time.time() - start_time), 60)
+				h, m = divmod(m, 60)
+				break
+			exploration_rate = (min_exploration_rate +	(max_exploration_rate - min_exploration_rate)* np.exp(-exploration_decay_rate*ep))
+			gc.collect()
+			if ep%50 == 0:
+				trainer.save_models(ep)
+
 print('Completed Training')
 
